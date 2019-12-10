@@ -1,5 +1,8 @@
 \documentclass{wg21}
 
+\input{glyphtounicode}
+\pdfgentounicode=1
+
 \usepackage{xcolor}
 \usepackage{soul}
 \usepackage{ulem}
@@ -37,16 +40,19 @@ The C++ standard library provides a set of utilities to generate
 pseudo-random numbers in a range of user's choosing. This is done
 by applying a type that represents the desired statistical distribution
 (e.g. \texttt{uniform\_int\_distribution}) with a type conforming
-to the Universal Random Bit Generator (URBG) concept (e.g. \texttt{mt19937}).
+to the Uniform Random Bit Generator (URBG) concept (e.g. \texttt{mt19937}).
 
-This paper proposes changes that would allow users to use these facilities
-for projects that require cross-platform reproducibility, such as games.
+This makes the standard-provided facilities highly customizable, but they
+are rarely used because the generated numbers are not reproducible
+across different platforms. This paper proposes changes that would allow
+users to use these facilities for domains that require cross-platform
+reproducibility, such as testing, simulations, and games.
 
 
 \hypertarget{motivation}{%
     \section{Motivation}\label{motivation}}
 
-A very simple ``Hello world'' of random number generation looks something
+A straightforward ``Hello world'' of random number generation looks something
 like this:
 
 % https://godbolt.org/z/dB7H_2
@@ -68,10 +74,10 @@ facilities unusable in contexts where a cross-platform reproducibility
 is required, such as procedural generation and physics simulations.
 
 However, cross-platform reproducibility is useful even in cases
-where it is not required, such as property-based tests. For property
-based testing, it is desirable for a fixed seed to generate the same
+where it is not required, such as property-based tests. For property-based
+testing, it is desirable for a fixed seed to generate the same
 test case across different platforms, so that developers can share
-interesting seeds between themselves.
+relevant seeds between themselves.
 
 Because of this, \texttt{<random>} is currently unusable in many
 domains and applications, and if we want to change that, we need
@@ -89,18 +95,18 @@ this paper.
 \hypertarget{standardize-implementation}{%
     \subsection{Standardize implementation for current distributions}\label{possible-solutions}}
 
-One possibility (prefered by the author), is to mandate the specific
+One possibility (the one prefered by the author), is to mandate the specific
 implementation of all distributions in \texttt{<random>}. This option
 has two advantages in that it retroactively fixes broken code, and
 also does not introduce further maintenance burden on standard library
 implementations (unlike the later options).
 
 The disadvantage of this option is that it can be viewed as a breaking
-change, and that it takes away the implementation's latitude to provide
-fastest possible distributions.
+change and that it takes away the implementation's latitude to provide
+the fastest possible distributions.
 
 I see the backward compatibility argument as debatable, as at least one
-implementor does not see the change to distribution output as breaking,
+implementor does not see the change to distribution output as breaking
 unless it forces ABI break\cite{msvc-github}.
 
 The second disadvantage can be fixed by adding \texttt{fast_meow_distributions}
@@ -113,11 +119,11 @@ of this option.
 
 The other possibility is to add \texttt{portable_meow_distributions}
 to \texttt{<random>}. This option does not break old code that relies
-on platform's specific implementation, and let's implementors provide
-the best optimized code for distributions for their platforms.
+on a platform's specific implementation and lets implementors write
+the best performing code for distributions for their platforms.
 
 However, it comes at the cost of increased maintenance burden (compared
-to just standardizing implementations of plain distributions), being
+to just standardizing implementations of the current distributions), being
 harder to teach, and keeping existing single-platform code broken if it
 becomes used in cross-platform contexts.
 
@@ -127,7 +133,7 @@ becomes used in cross-platform contexts.
     \section{Non-goals}\label{non-goals}}
 
 Note that this paper does not attempt to fix other problems that make
-\texttt{<random>} either hard, or flat out impossible, to use correctly,
+\texttt{<random>} either hard or flat out impossible, to use correctly,
 as that is the purview of different papers. It also does not provide code
 nor wording, as those can be decided after we agree on the direction we
 want to take.
