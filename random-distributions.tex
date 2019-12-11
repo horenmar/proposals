@@ -43,10 +43,16 @@ by applying a type that represents the desired statistical distribution
 to the Uniform Random Bit Generator (URBG) concept (e.g. \texttt{mt19937}).
 
 This makes the standard-provided facilities highly customizable, but they
-are rarely used because the generated numbers are not reproducible
-across different platforms. This paper proposes changes that would allow
-users to use these facilities for domains that require cross-platform
-reproducibility, such as testing, simulations, and games.
+are rarely used because the generated numbers are not reproducible across
+different platforms. The reason for this is that the output of
+standard-provided distributions\footnote{The output of standard-provided
+URBGs is portable due to a happy accident during the original
+\texttt{<random>} standardization} is implementation-specified and thus
+can (and does) differ across implementations.
+
+This paper proposes changes that would allow users to use these facilities
+for domains that require cross-platform reproducibility, such as testing,
+simulations, and games.
 
 
 \hypertarget{motivation}{%
@@ -67,8 +73,10 @@ int main() {
 }
 \end{codeblock}
 
-On my machine, this code always prints out \texttt{53}. \href{https://godbolt.org/z/dB7H_2}{On other
-popular platforms, the code prints \texttt{82} and \texttt{92}}. This
+On my machine\footnote{MSVC bundled with VS 16.4.0}, this code always
+prints out \texttt{53}. \href{https://godbolt.org/z/dB7H_2}{On other
+popular platforms, the code prints \texttt{82}\footnote{libstdc++} and
+\texttt{92}\footnote{libc++}}. This
 difference in outputs makes the standard-provided \texttt{<random>}
 facilities unusable in contexts where a cross-platform reproducibility
 is required, such as procedural generation and physics simulations.
@@ -97,46 +105,53 @@ this paper.
 
 One possibility (the one prefered by the author), is to mandate the specific
 implementation of all distributions in \texttt{<random>}. This option
-has two advantages in that it retroactively fixes broken code, and
-also does not introduce further maintenance burden on standard library
-implementations (unlike the later options).
+has two advantages, in that
 
-The disadvantage of this option is that it can be viewed as a breaking
-change and that it takes away the implementation's latitude to provide
-the fastest possible distributions.
+\begin{itemize}
+    \item it retroactively fixes broken code
+    \item it does not introduce further maintenance burden on implementations of the standard library
+\end{itemize}
 
-I see the backward compatibility argument as debatable, as at least one
+They are also disadvantages at the same time, in that
+
+\begin{itemize}
+    \item it is a (potentially) breaking change
+    \item it forbids implementations from providing the fastest possible code for their platform
+\end{itemize}
+
+The backward compatibility argument is debatable, as at least one
 implementor does not see the change to distribution output as breaking
-unless it forces ABI break\cite{msvc-github}.
+unless it forces a full ABI break\cite{msvc-github}.
 
-The second disadvantage can be fixed by adding \texttt{fast_meow_distributions}
-to the standard, at the cost of also erasing the maintenance burden advantage
-of this option.
+The second disadvantage can be fixed by adding \texttt{fast_meow_distribution}s
+to the standard.
 
 
 \hypertarget{portable-overloads}{%
     \subsection{Provide \texttt{portable_meow_distributions}}\label{portable-overloads}}
 
 The other possibility is to add \texttt{portable_meow_distributions}
-to \texttt{<random>}. This option does not break old code that relies
-on a platform's specific implementation and lets implementors write
-the best performing code for distributions for their platforms.
+to \texttt{<random>}. This option is essentially the inverse solution
+of the first possibility, in that the old code is left as it was, and
+a new set of types is provided for portability.
 
-However, it comes at the cost of increased maintenance burden (compared
-to just standardizing implementations of the current distributions), being
-harder to teach, and keeping existing single-platform code broken if it
-becomes used in cross-platform contexts.
+However, this option is less desirable one as it makes the simpler code
+do the wrong thing, and is harder to teach.
 
 
 
 \hypertarget{non-goals}{%
     \section{Non-goals}\label{non-goals}}
 
-Note that this paper does not attempt to fix other problems that make
-\texttt{<random>} either hard or flat out impossible, to use correctly,
-as that is the purview of different papers. It also does not provide code
-nor wording, as those can be decided after we agree on the direction we
-want to take.
+There are several other problems with \texttt{<random>} as it is currently
+standardized, and this paper intentionally does not try to fix any of them.
+This is because there are other papers that target those issues, and we
+should not let fixing an issue get bogged down because of a lack of consensus
+on other issues.
+
+Note that this paper also intentionally does not provide code nor wording
+in this version, as I think that consensus on the desired direction should
+come first.
 
 
 \begin{thebibliography}{9}
