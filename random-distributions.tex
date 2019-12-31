@@ -52,7 +52,8 @@ can (and does) differ across implementations.
 
 This paper proposes changes that would allow users to use these facilities
 for domains that require cross-platform reproducibility, such as testing,
-simulations, and games.
+scientific simulations, and games\footnote{See \nameref{app-a-uses} for
+more use cases that require cross-platform reproducibility.}.
 
 
 \hypertarget{motivation}{%
@@ -92,6 +93,15 @@ domains and applications, and if we want to change that, we need
 to ensure that a deterministically seeded code, such as the snippet
 above, generates the same numbers on all platforms.
 
+\hypertarget{non-goals}{%
+    \section{Non-goals}\label{non-goals}}
+
+There are several other problems with \texttt{<random>} as it is currently
+standardized, and this paper intentionally does not try to fix any of them.
+This is because there are other papers that target those issues, and we
+should not let fixing an issue get bogged down because of a lack of consensus
+on other issues.
+
 
 \hypertarget{possible-solutions}{%
     \section{Possible solutions}\label{possible-solutions}}
@@ -119,9 +129,6 @@ They are also disadvantages at the same time, in that
     \item it forbids implementations from providing the fastest possible code for their platform
 \end{itemize}
 
-The backward compatibility argument is debatable, as at least one
-implementor does not see the change to distribution output as breaking
-unless it forces a full ABI break\cite{msvc-github}.
 
 The second disadvantage can be fixed by adding \texttt{fast_meow_distribution}s
 to the standard.
@@ -130,37 +137,87 @@ to the standard.
 \hypertarget{portable-overloads}{%
     \subsection{Provide \texttt{portable_meow_distributions}}\label{portable-overloads}}
 
-The other possibility is to add \texttt{portable_meow_distributions}
+Another possibility is to add \texttt{portable_meow_distributions}
 to \texttt{<random>}. This option is essentially the inverse solution
-of the first possibility, in that the old code is left as it was, and
+of the first option, in that the old code is left as it was, and
 a new set of types is provided for portability.
 
 However, this option is less desirable one as it makes the simpler code
 do the wrong thing, and is harder to teach.
 
+\hypertarget{specific-algorithms}{%
+    \subsection{Provide specific algorithms as distributions}\label{specific-algorithms}}
+
+The last option is to keep the status quo for already standardized types,
+but also provide specific algorithms under their own name, e.g. provide
+an implementation of
+\href{https://en.wikipedia.org/wiki/Marsaglia_polar_method}{Marsaglia polar method}
+as \mbox{\texttt{std::marsaglia_polar_method_distribution}}.
+
+This option has some compeling advantages, in that
+
+\begin{itemize}
+    \item it lets experts pick the right algorithm for their domain
+    \item allows for future expansion with better portable algorithms as they are found
+    \item does not break backward compatibility
+\end{itemize}
+
+However, this option is the least teachable option by far, and it is also
+the least beginner friendly of all options presented in this paper.
+
+It also does not absolve the standard from prescribing at least parts
+of the implementation of specific algorithms. As an example, the already
+mentioned Marsaglia polar method generates 2 normally distributed floating
+point numbers in single run. The order in which these 2 numbers are returned
+would need to be specified in the standard to avoid differences in behaviour
+between different implementations\footnote{This difference already exists
+in the wild, as both MSVC and libstdc++ use this algorithm for their
+implementation of \texttt{std::normal_distribution}, but return
+the generated numbers in different order.}.
 
 
-\hypertarget{non-goals}{%
-    \section{Non-goals}\label{non-goals}}
+\hypertarget{goals}{%
+    \section{Goals}\label{goals}}
 
-There are several other problems with \texttt{<random>} as it is currently
-standardized, and this paper intentionally does not try to fix any of them.
-This is because there are other papers that target those issues, and we
-should not let fixing an issue get bogged down because of a lack of consensus
-on other issues.
+The goal of this paper is to start discussion and find a consensus on 3 questions:
 
-Note that this paper also intentionally does not provide code nor wording
-in this version, as I think that consensus on the desired direction should
-come first.
+\begin{enumerate}
+    \item Should the standard provide portable distributions?
+    \item Which of the three approaches should standard take?
+    \item How should the standard deal with distributions on floating point numbers?\footnote{Remember that the standard does not even specify whether floating point numbers adhere to IEEE-754.}
+\end{enumerate}
 
 
-\begin{thebibliography}{9}
+\newpage
 
-    \bibitem{msvc-github}
-    Casey Carter
-    \emph{Issue optimizing the implementation of \texttt{uniform_int_distribution}}
-    \url{https://github.com/microsoft/STL/issues/178#issuecomment-553059724}
+\appendix
 
-\end{thebibliography}
+\hypertarget{app-a-uses}{%
+    \section{Appendix A: Uses for repeatable distributions}\label{app-a-uses}}
+
+To come up with a more comprehensive list of problems where people need
+repeatable random number generation,
+\href{https://www.reddit.com/r/cpp/comments/e9mft4/when_did_you_want_to_use_random_but_couldnt/}
+{I opened up a Reddit thread}.
+
+This is a short list of the answers:
+
+\begin{itemize}
+    \item Fuzzing in general
+    \item Property based testing
+    \item Benchmarking of data-dependent algorithms (e.g. sorting)
+    \item Photoshop filters
+    \item Procedural generation of X in games (usually maps)
+    \item Scientific simulations
+\end{itemize}
+
+%\begin{thebibliography}{9}
+%
+%    \bibitem{msvc-github}
+%    Casey Carter
+%    \emph{Issue optimizing the implementation of \texttt{uniform_int_distribution}}
+%    \url{https://github.com/microsoft/STL/issues/178#issuecomment-553059724}
+%
+%\end{thebibliography}
 
 \end{document}
