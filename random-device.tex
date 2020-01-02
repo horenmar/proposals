@@ -93,7 +93,9 @@ on other issues.
 
 To address these issues, I propose to deprecate the \tcode{entropy}
 member function and instead add \tcode{static constexpr bool is_predictable()}%
-\footnote{Alternative names: is_nonpredictable, is_deterministic, is_nondeterministic, TODO}
+\footnote{Possible alternative names that could be used instead:
+\tcode{is_nonpredictable}, \tcode{is_deterministic},
+or \tcode{is_nondeterministic}}
 function to \tcode{random_device}. This function returns \tcode{true} if
 \mbox{\tcode{random_device}} is implemented in a way that makes its
 output predictable, e.g. by using a PRNG and \tcode{false} when its output
