@@ -1,0 +1,206 @@
+\documentclass{wg21}
+
+\input{glyphtounicode}
+\pdfgentounicode=1
+
+\usepackage{xcolor}
+\usepackage{soul}
+\usepackage{ulem}
+\usepackage{fullpage}
+\usepackage{parskip}
+\usepackage{csquotes}
+\usepackage{relsize}      % provide relative font size changes
+\usepackage{textcomp}     % provide \text{l,r}angle
+\usepackage{mathrsfs}     % mathscr font
+\usepackage{microtype}
+
+\title{Make \texttt{std::random\_device} Scrutable}
+\docnumber{PXXXXR0}
+\audience{LEWG}
+\author{Martin Hořeňovský}{martin.horenovsky@gmail.com}
+
+\usepackage[inner=2cm,outer=2cm]{geometry}
+
+\begin{document}
+\maketitle
+
+%\begin{flushright}
+%\hfill \break
+%\hfill \break
+%\textit{Some tagline?}
+%\end{flushright}
+
+% random device is non-deterministic until it isn't
+% https://eel.is/c++draft/rand#device
+
+\hypertarget{introduction}{%
+    \section{Introduction}\label{introduction}}
+
+The C++ standard library provides a set of utilities to generate
+pseudo-random numbers with different properties. It also provides
+\tcode{std::random_device} for users who desire nondeterministic
+randomness.
+
+However, implementations are also allowed to employ a deterministic
+pseudo-random number generator if providing nondeterministic randomness
+is impossible. This allows implementations to provide
+\tcode{std::random_device} even on any possible platform, but there
+is a problem with this: the current interface does not provide a good
+way of checking whether the implementation provides non-deterministic
+random numbers.
+
+
+\hypertarget{motivation}{%
+    \section{Motivation}\label{motivation}}
+
+The standard already provides a way, specifically the
+\tcode{std::random_device::entropy()} member method, that the user should
+be able to use to find out whether \tcode{random_device} provides
+nondeterministic random number. In practice, this approach has two large
+flaws:
+
+\begin{itemize}
+    \item This information is only available at runtime. In practice,
+          an implementation already knows whether it provides
+          nondeterministic during compilation, and we should expose this
+          information to the users.
+    \item Implementations do not always implement this function usefully.
+          For example, older versions of libstdc++ used to always return 0.
+          Current versions use Linux-specific syscall to query the
+          available entropy, and on Windows they return 0 even if they use
+          OS-provided secure random facilities. Similarly, libc++ only ever
+          returns 0, even though it only uses platform-provided secure
+          random facilities.
+\end{itemize}
+
+The second flaw is likely exacerbated by the fact that if an implementation
+is using a platform-provided random facilities, it likely cannot provide
+a real and meaningful entropy estimate.
+
+\hypertarget{non-goals}{%
+    \section{Non-goals}\label{non-goals}}
+
+There are several other problems with \tcode{<random>}, and even
+\texttt{std::random_device} as it is currently standardized. This paper
+intentionally does not try to fix any of them.
+This is because there are other papers that target those issues, and we
+should not let fixing an issue get bogged down because of a lack of consensus
+on other issues.
+
+
+\hypertarget{proposed-solution}{%
+    \section{Proposed solution}\label{proposed-solution}}
+
+To address these issues, I propose to deprecate the \tcode{entropy}
+member function and instead add \tcode{static constexpr bool is_predictable()}%
+\footnote{Alternative names: is_nonpredictable, is_deterministic, is_nondeterministic, TODO}
+function to \tcode{random_device}. This function returns \tcode{true} if
+\mbox{\tcode{random_device}} is implemented in a way that makes its
+output predictable, e.g. by using a PRNG and \tcode{false} when its output
+is not predictable, e.g. when it is implemented in terms of OS-provided
+cryptographically secure random number generation facilities.
+
+The reason to deprecate \tcode{entropy} is that only a small niche in
+the Linux community thinks of entropy in the OS providded CSRNG facilities
+as depletable. Combined with the fact that 2 out of the big 3
+implementations do not return meaningful results on all platforms, and
+that the users are more interested in simple boolean query of ``will
+the output be unpredictable'', \tcode{entropy} is not useful in any way.
+
+Even for the niche case where a user on the Linux platform cares about
+the estimated entropy in \tcode{/dev/urandom}, the interface has a TOCTOU
+problem.
+
+
+\hypertarget{constexpr-query-wording}{%
+    \subsection{Proposed wording changes}\label{constexpr-query-wording}}
+
+
+\begin{codeblock}
+    class random_device {
+        public:
+        // types
+        using result_type = unsigned int;
+        
+        // generator characteristics
+        static constexpr result_type min() { return numeric_limits<result_type>::min(); }
+        static constexpr result_type max() { return numeric_limits<result_type>::max(); }
+        
+        // constructors
+        random_device() : random_device(implementation-defined) {}
+        explicit random_device(const string& token);
+        
+        // generating functions
+        result_type operator()();
+        
+        // property functions
+        double entropy() const noexcept;
+        @\added{static constexpr bool is_predictable();}@
+        
+        // no copy functions
+        random_device(const random_device&) = delete;
+        void operator=(const random_device&) = delete;
+    };
+\end{codeblock}
+
+\begin{codeblock}
+@\added{static constexpr bool is_predictable();}@
+\end{codeblock}
+
+\begin{itemdescr}
+    \added{\returns{} \tcode{true} if default-constructed \tcode{random_device}
+    uses a predictable random generator, such as Mersenne Twister.
+    \tcode{false} otherwise.}
+\end{itemdescr}
+
+
+
+\hypertarget{alternative-approach}{%
+    \section{Alternative approach}\label{alternative-approach}}
+
+An alternative approach is to avoid deprecating \tcode{entropy()}
+and instead clarifying that \tcode{entropy()} should only
+return 0 for predictable implementations, such as those that rely on a
+random number engine as defined in [rand.req.eng], and implementations
+that use unpredictable implementations, such as using \tcode{rand_s}
+provided by Windows, should return non-zero estimate.
+
+
+
+\hypertarget{entropy-query-wording}{%
+    \subsubsection{Proposed wording changes}\label{entropy-query-wording}}
+
+[rand.device]:
+
+\begin{itemdescr}
+    If implementation limitations prevent generating nondeterministic
+    random numbers, the implementation may employ a random number engine
+    \added{as defined in [rand.req.eng]}.
+\end{itemdescr}
+
+\vskip 0.5cm
+
+
+\begin{codeblock}
+double entropy() const noexcept;
+\end{codeblock}
+
+\begin{itemdescr}
+    \returns If the implementation employs a random number engine, returns 0.0. Otherwise, returns a \added{non-zero} entropy estimate for the random numbers returned by operator(), in the range min() to log2(max()+1).
+\end{itemdescr}
+
+
+
+\hypertarget{goals}{%
+    \section{Goals}\label{goals}}
+
+This paper has two goals, 
+\begin{enumerate}
+    \item Provide users of \tcode{random_device} with a way to query
+    whether the output is predictable or not.
+    \item Start a discussion on what should happen to
+    \tcode{random_device::entropy}
+\end{enumerate}
+
+
+\end{document}
