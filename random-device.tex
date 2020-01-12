@@ -62,8 +62,8 @@ flaws:
 \begin{itemize}
     \item This information is only available at runtime. In practice,
           an implementation already knows whether it provides
-          nondeterministic during compilation, and we should expose this
-          information to the users.
+          nondeterministic \tcode{random_device} during compilation,
+          and we should expose this information to the users.
     \item Implementations do not always implement this function usefully.
           For example, older versions of libstdc++ used to always return 0.
           Current versions use Linux-specific syscall to query the
@@ -123,22 +123,22 @@ problem.
         public:
         // types
         using result_type = unsigned int;
-        
+
         // generator characteristics
         static constexpr result_type min() { return numeric_limits<result_type>::min(); }
         static constexpr result_type max() { return numeric_limits<result_type>::max(); }
-        
+
         // constructors
         random_device() : random_device(implementation-defined) {}
         explicit random_device(const string& token);
-        
+
         // generating functions
         result_type operator()();
-        
+
         // property functions
         double entropy() const noexcept;
         @\added{static constexpr bool is_predictable();}@
-        
+
         // no copy functions
         random_device(const random_device&) = delete;
         void operator=(const random_device&) = delete;
@@ -196,7 +196,7 @@ double entropy() const noexcept;
 \hypertarget{goals}{%
     \section{Goals}\label{goals}}
 
-This paper has two goals, 
+To sum up, this paper has two goals,
 \begin{enumerate}
     \item Provide users of \tcode{random_device} with a way to query
     whether the output is predictable or not.
