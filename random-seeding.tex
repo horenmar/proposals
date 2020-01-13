@@ -79,7 +79,7 @@ problems with this:
 
 \begin{enumerate}
 
-\item We have no way to know how much randomness do we have to feed into
+\item We have no way to know how much randomness we have to feed into
 a \tcode{seed_seq} to initialize a specific engine, and
 
 \item \tcode{seed_seq} is not a bijection even if you give it enough
@@ -117,16 +117,6 @@ These issues mean that properly seeding the Random Number Engines in
 \tcode{<random>} is impossible, which should be fixed.
 
 
-\hypertarget{non-goals}{%
-    \section{Non-goals}\label{non-goals}}
-
-There are several other problems with \texttt{<random>} as it is currently
-standardized, and this paper intentionally does not try to fix any of them.
-This is because there are other papers that target those issues, and we
-should not let fixing an issue get bogged down because of a lack of consensus
-on other issues.
-
-
 \hypertarget{proposed-solution}{%
     \section{Proposed solution}\label{proposed-solution}}
 
@@ -158,14 +148,45 @@ construction. If the amount of data requested by user from
 \emph{n} bytes is written out. If the amount of data requested is larger,
 the behaviour is undefined.
 
-While this fixes the basic problem with seeding in \tcode{<random>},
-I also propose improving the user experience in the common case where
-the user wants to seed a random number engine randomly. To help with
-this, I propose adding \tcode{generate} member function to
-\tcode{random_device}, so random number engines can use it as a
-\emph{SeedSequence}. However, this version of \tcode{random_device}
-does not, and can not, fulfill the \emph{SeedSeq} requirements. Because
-of this I also suggest refining the requirements in the next part.
+By combining the two changes above, we can now properly seed a random
+number engine, such as \tcode{mt19337}, with random data, using code
+like this:
+
+\begin{codeblock}
+#include <algorithm>
+#include <array>
+#include <iostream>
+#include <random>
+
+int main() {
+    std::array<uint32_t, std::mt19337::required_seed_size()> random_data;
+    std::generate(random_data.begin(), random_data.end(), std::random_device{});
+    std::mt19937 urbg(std::sized_seed_seq(random_data.begin(), random_data.end()));
+    std::cout << urbg() << '\n';
+}
+\end{codeblock}
+
+However, while proper random seeding is now possible, the code is quite
+long and clunky. Because randomly initializing a random number engine
+is a common use case, I propose adding \tcode{generate} member function
+to \tcode{random_device}, so it can be used as a \emph{SeedSequence}.
+This would transform the code above into this:
+
+\begin{codeblock}
+#include <iostream>
+#include <random>
+
+int main() {
+    std::mt19937 urbg(std::random_device{});
+    std::cout << urbg() << '\n';
+}
+\end{codeblock}
+
+With this change, it is easier to seed a random number engine with
+random seed correctly, than it is to seed it incorrectly. However,
+\tcode{random_device} does not, and can not, fulfill the
+\emph{SeedSequence} requirements. Because of this I also suggest refining
+the requirements in the next part.
 
 
 \hypertarget{solution-3-different-requirement}{%
