@@ -79,8 +79,8 @@ prints out \texttt{53}. \href{https://godbolt.org/z/dB7H_2}{On other
 popular platforms, the code prints \texttt{82}\footnote{libstdc++} and
 \texttt{92}\footnote{libc++}}. This
 difference in outputs makes the standard-provided \texttt{<random>}
-facilities unusable in contexts where a cross-platform reproducibility
-is required, such as procedural generation and physics simulations.
+facilities unusable in contexts where reproducibility is required,
+such as procedural generation and physics simulations.
 
 However, cross-platform reproducibility is useful even in cases
 where it is not required, such as property-based tests. For property-based
@@ -113,7 +113,7 @@ this paper.
 \hypertarget{standardize-implementation}{%
     \subsection{Standardize implementation for current distributions}\label{possible-solutions}}
 
-One possibility (the one prefered by the author), is to mandate the specific
+One possibility (the one preferred by the author), is to mandate a specific
 implementation of all distributions in \texttt{<random>}. This option
 has two advantages, in that
 
